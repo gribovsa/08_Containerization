@@ -1,0 +1,412 @@
+Докер у нас уже установлен, см лекцию
+docker -v - посмотреть версию
+
+Запустим контейнер
+docker run -it ubuntu:22.10 bash - загруужается, устанавливается и переходим в режим контейнера
+root@b585fe81123f:/#
+
+
+Проверим, что всё изолируется
+ps -aux - изолированно дисковое пространство
+ls - дисковая подсистема
+
+Но здесь отсутствуют 
+ip a
+ifconfig
+
+установим их
+apt update
+apt install net-tools
+
+теперь
+ifconfig - работает, можно посмотреть сетевые настройки контейнера
+
+hostname - покажет hostname который совпадает с именеем контейнера
+
+exit - выдеем из контейнера 
+
+docker ps -a - посмотрим контейнеры dockera
+Имена контейнером генерируются автоматически первое слово - прилагательное, второе имя известного учёного или хакера
+
+docker start <ид контейнера> - запуск контейнера
+
+docker exec -it <ид контейнера> bash - войти в контейнер
+root@b585fe81123f:/#
+
+exit - выйдем из контейнера
+
+docker exec -it <ид контейнера> hostname - запустить программу hostname (можно и др, напр ls, ifconfig итд) в контейнере, не заходя в него, те из хост системы
+
+docker stop <ид контейнера> - останов контейнера
+docker ps -a - посмотрим контейнеры dockera
+CONTAINER ID   IMAGE     COMMAND   CREATED          STATUS                        PORTS     NAMES
+b585fe81123f   ubuntu    "bash"    37 minutes ago   Exited (137) 21 seconds ago             determined_golick
+код выхода 137 - значит что контейнер остановлен некорректно
+код выхода 0 - это значит что контейнер остановле корректно
+
+__________________________________________________________________________________________________
+
+Запустим ещё один контейнер
+
+hostname - GB
+NAMES - gribov_sergey
+
+docker run -it -h GB --name gribov_sergey ubuntu - вот так, версию ubuntu
+
+docker ps -a
+CONTAINER ID   IMAGE     COMMAND       CREATED             STATUS                        PORTS     NAMES
+2adf31bb777c   ubuntu    "/bin/bash"   27 minutes ago      Exited (0) 11 seconds ago               gribov_sergey
+b585fe81123f   ubuntu    "bash"        About an hour ago   Exited (137) 33 minutes ago             determined_golick
+
+выдем в хост
+exit
+
+и остановим контейнер
+docker stop gribov_sergey
+docker ps -a
+CONTAINER ID   IMAGE     COMMAND       CREATED             STATUS                        PORTS     NAMES
+2adf31bb777c   ubuntu    "/bin/bash"   37 minutes ago      Exited (137) 12 seconds ago             gribov_sergey
+b585fe81123f   ubuntu    "bash"        About an hour ago   Exited (137) 43 minutes ago             determined_golick
+
+_________________________________________________________________________________________________________
+
+запустим контейнер другой системы
+
+docker run -it centos bash - ОС centos
+
+[root@db549f5cd0e0 /]#
+exit
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE     COMMAND       CREATED       STATUS                     PORTS     NAMES
+db549f5cd0e0   centos    "bash"        2 hours ago   Exited (0) 7 seconds ago             trusting_sinoussi
+2adf31bb777c   ubuntu    "/bin/bash"   3 hours ago   Exited (137) 2 hours ago             gribov_sergey
+b585fe81123f   ubuntu    "bash"        3 hours ago   Exited (137) 3 hours ago             determined_golick
+
+__________________________________________________________________________________________________________
+
+docker rm $(docker ps -a -q) - удалим все контейнеры
+
+db549f5cd0e0
+2adf31bb777c
+b585fe81123f
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+root@usrv:~#
+пусто
+___________________________________________________________________________________________________________
+
+docker rmi $(docker images -aq) - удалим все образы
+
+Untagged: ubuntu:latest
+Untagged: ubuntu@sha256:80dd3c3b9c6cecb9f1667e9290b3bc61b78c2678c02cbdae5f0fea92cc6734ab
+Deleted: sha256:b1d9df8ab81559494794e522b380878cf9ba82d4c1fb67293bcf931c3aa69ae4
+Deleted: sha256:687d50f2f6a697da02e05f2b2b9cb05c1d551f37c404ebe55fdec44b0ae8aa5c
+Untagged: ubuntu:22.10
+Untagged: ubuntu@sha256:e322f4808315c387868a9135beeb11435b5b83130a8599fd7d0014452c34f489
+Deleted: sha256:692eb4a905c074054e0a35d647671f0e32ed150d15b23fd7bc745cfb2fdeddbd
+Deleted: sha256:1e8bb0620308641104e68d66f65c1e51de68d7df7240b8a99a251338631c6911
+Untagged: centos:latest
+Untagged: centos@sha256:a27fd8080b517143cbbbab9dfb7c8571c40d67d534bbdee55bd6c473f432b177
+Deleted: sha256:5d0da3dc976460b72c77d94c8a1ad043720b0416bfc16c52c45d4847e53fadb6
+Deleted: sha256:74ddd0ec08fa43d09f32636ba91a0a3053b02cb4627c35051aff89f853606b59
+root@usrv:~# docker images - посмотрим
+REPOSITORY   TAG       IMAGE ID   CREATED   SIZE
+root@usrv:~#
+пусто
+
+______________________________________________________________________________________________________________
+
+Хранение файлов в контейнерах
+
+docker run -it -h GB --name gb-test ubuntu - запустим контейнер из образа
+root@GB:/# ls -l - посмотрим
+total 48
+lrwxrwxrwx   1 root root    7 Apr 22  2024 bin -> usr/bin
+drwxr-xr-x   2 root root 4096 Apr 22  2024 boot
+drwxr-xr-x   5 root root  360 Dec 28 15:27 dev
+drwxr-xr-x   1 root root 4096 Dec 28 15:27 etc
+drwxr-xr-x   3 root root 4096 Nov 19 09:52 home
+lrwxrwxrwx   1 root root    7 Apr 22  2024 lib -> usr/lib
+lrwxrwxrwx   1 root root    9 Apr 22  2024 lib64 -> usr/lib64
+drwxr-xr-x   2 root root 4096 Nov 19 09:46 media
+drwxr-xr-x   2 root root 4096 Nov 19 09:46 mnt
+drwxr-xr-x   2 root root 4096 Nov 19 09:46 opt
+dr-xr-xr-x 275 root root    0 Dec 28 15:27 proc
+drwx------   2 root root 4096 Nov 19 09:52 root
+drwxr-xr-x   4 root root 4096 Nov 19 09:52 run
+lrwxrwxrwx   1 root root    8 Apr 22  2024 sbin -> usr/sbin
+drwxr-xr-x   2 root root 4096 Nov 19 09:46 srv
+dr-xr-xr-x  13 root root    0 Dec 28 15:27 sys
+drwxrwxrwt   2 root root 4096 Nov 19 09:52 tmp
+drwxr-xr-x  12 root root 4096 Nov 19 09:46 usr
+drwxr-xr-x  11 root root 4096 Nov 19 09:52 var
+root@GB:/#
+
+mkdir /example -создадим дирректорию
+vi /example/test.txt
+bash: vi: command not found - такой командой в нашемконтейнере пользоваться нельзя
+touch /example/test.txt - тогда создадим такой командой
+root@GB:/# ls /example/
+test.txt - есть!
+root@GB:/#
+
+echo "Hello my frend" >> /example/test.txt - запишем что нибудь в наш файлик 5 раз
+echo "Hello my girlfrend" >> /example/test.txt -и ещё что нибудь 3 раза
+
+cat /example/test.txt - проверим
+Hello my frend
+Hello my frend
+Hello my frend
+Hello my frend
+Hello my frend
+Hello my girlfrend
+Hello my girlfrend
+Hello my girlfrend
+root@GB:/#
+
+exit - выйдем
+root@usrv:~# docker stop gb-test -остановим
+gb-test
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE     COMMAND       CREATED          STATUS                      PORTS     NAMES
+2590fee952cd   ubuntu    "/bin/bash"   24 minutes ago   Exited (0) 34 seconds ago             gb-test
+root@usrv:~#
+
+root@usrv:~# docker start gb-test - запустим
+gb-test
+root@usrv:~# docker exec -it gb-test bash -войдём
+root@GB:/# cat /example/test.txt -посмотрим
+Hello my frend
+Hello my frend
+Hello my frend
+Hello my frend
+Hello my frend
+Hello my girlfrend
+Hello my girlfrend
+Hello my girlfrend
+root@GB:/#
+файл сохранился!!!
+
+exit - выйдем
+root@usrv:~# docker stop gb-test - остановим
+gb-test
+root@usrv:~# docker rm gb-test - удалим
+gb-test
+root@usrv:~#
+___________________________________________________________________________________________________________________________
+
+Задача: Добавить внешнее хранилище и работать с ним из контейнера
+
+
+root@usrv:~# mkdir /test - создадим в корне дирректорию
+root@usrv:~# vi /test/test.txt - в ней файл, заполним его чем нибудь, см работу в редакторе vim
+root@usrv:~# cat /test/test.txt - посмотрим на него
+Hello sun
+Hello sea
+Hello world
+root@usrv:~#
+отлично!
+
+Создадим контейнер 
+хостимя: gb-test
+имя контейнера: gb-test
+на базе: ubuntu
+привяжем папку в хост системе c названием /test
+к папке в контейнере с именем /example
+
+docker run -it -h gb-test --name gb-test -v /test:/example ubuntu - вот так
+
+root@gb-test:/# ls
+bin  boot  dev  etc  example  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var - видим есть папка
+root@gb-test:/#
+
+Проверим её
+root@gb-test:/# cat /example/test.txt
+Hello sun
+Hello sea
+Hello world
+root@gb-test:/#
+видим, данные что были в папке на хост машине, теперь папке на контейнере
+
+exit
+docker rm gb-test - удалим
+_____________________________________________________________________________________________________________________________________
+
+Задача: Создать папку, которую мы будем монтировать внутрь контейнера, 
+внутри папки файл с данными.
+В root дирректории создать файлик с тем же самым именем
+root@usrv:~# pwd
+/root
+root@usrv:~# touch test.txt - создали файлик
+root@usrv:~# vi test.txt - внесли в него цифры
+root@usrv:~# cat test.txt -посмотрели
+123456
+123456
+123456
+123456
+654321
+654321
+654321
+
+
+Создать контейнер ubuntu
+имя:
+хостнейм:
+
+Смонтировать созданную ранее папку файлом с хоста /test/test.txt
+root@usrv:~# cat /test/test.txt
+Hello sun
+Hello sea
+Hello world
+root@usrv:~#
+
+и туда смонтировань ранее созданный файлик в корне test.txt
+так чтобы он пересекался со смонтированном ранее файлом!
+
+Решение:
+
+Итак два файла
+
+root@usrv:~# cat test.txt - в домашней дирректории только цифры
+123456
+123456
+123456
+123456
+654321
+654321
+654321
+root@usrv:~# cat /test/test.txt -в дирректории test только буквы
+Hello sun
+Hello sea
+Hello world
+root@usrv:~#
+
+
+Итак, создаём контейнер
+хост: gb-test
+имя: gb-test 
+монтируем директорию /test в /example (она в контейнере) - файл с буквами
+монтируем файл /root/test.txt в /example/test.txt - файл с цифрами
+docker run -it -h gb-test --name gb-test -v /test:/example -v /root/test.txt:/example/test.txt ubuntu
+
+root@gb-test:/# cat /example/test.txt - смотрим
+123456
+123456
+123456
+123456
+654321
+654321
+654321
+root@gb-test:/#
+при пересечении файл с цифрами перезаписал файл с буквами
+тот который был смонтирован позже перекрыл тот который был смонтирован ранее!!!
+____________________________________________________________________________________________________________________________________
+
+Задача: Запустить два контейнера и сделать так чтобы один был связан с другим.
+сделать это можно с помощью директивы link
+Один контейнер - база данных - MariaDM
+Второй контейнер - phpMyAdmin - web интерфейс для MySQL и MariaDB
+
+
+ПЕРВЫЙ КОНТЕЙНЕР
+
+docker run -it --name mariadb --env MARIADB_ROOT_PASSWORD=12345678 mariadb - при установке зависает
+
+docker run -d --name mariadb --env MARIADB_ROOT_PASSWORD=12345678 mariadb - запуск контейнера в режиме демона (не будет занимать наш терминал)
+CONTAINER ID   IMAGE     COMMAND                  CREATED          STATUS          PORTS      NAMES
+7e9321d1c608   mariadb   "docker-entrypoint.s…"   31 seconds ago   Up 28 seconds   3306/tcp   mariadb
+root@usrv:~#
+docker start mariadb - стартовать обязательно
+мария запущена и работает!
+
+ВТОРОЙ КОНТЕЙНЕР
+
+в режиме демона, 
+мы линкуем mariadb(имя нашего контейнера с марией) - link mariadb, которая локально будет определятся как база данных bd, делаем проброс порта, и запускаем phpmyadmin  
+docker run --name phpmyadmin -d --link mariadb:db -p 8081:80 phpmyadmin/phpmyadmin
+
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED          STATUS          PORTS                                     NAMES
+502a2c0459e7   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   7 minutes ago    Created         0.0.0.0:8081->80/tcp, [::]:8081->80/tcp   phpmyadmin
+7e9321d1c608   mariadb                 "docker-entrypoint.s…"   19 minutes ago   Up 24 seconds   3306/tcp                                  mariadb
+root@usrv:~#
+
+root@usrv:~# docker start phpmyadmin - стартовать обязательно
+phpmyadmin
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED          STATUS          PORTS                                     NAMES
+502a2c0459e7   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   20 minutes ago   Up 8 seconds    0.0.0.0:8081->80/tcp, [::]:8081->80/tcp   phpmyadmin
+7e9321d1c608   mariadb                 "docker-entrypoint.s…"   32 minutes ago   Up 13 minutes   3306/tcp                                  mariadb
+root@usrv:~#
+
+Теперь в браузере вводим IP нашей виртуальной машины с Linux и обращаемся на порт 8081
+192.168.1.32:8081
+Открывается phpmyadmin
+не знаю пользователь и пароль по умолчанию
+
+Посмотрим
+root@usrv:~# docker exec it phpmyadmin bash
+root@502a2c0459e7:/var/www/html# cd - перешёл в корень
+
+Посморим информацию о хостах
+root@502a2c0459e7:~# cat /etc/hosts 
+127.0.0.1       localhost
+::1     localhost ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+172.17.0.2      db 7e9321d1c608 mariadb
+172.17.0.3      502a2c0459e7
+root@502a2c0459e7:~#
+Видим "172.17.0.2      db 7e9321d1c608 mariadb" - это наш второй контейнер с марией
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,404 @@
+Команды:
+
+
+
+
+ls - посмотреть текущую директорию
+
+ls назвавниедиректории/поддиректории - посмореть поддиректорию
+ls testfolder/bin/
+
+cd назвавниедиректории/ - перейти в дирректорию
+cd root/
+
+cd .. - перейти на один уровень вверх (в родит дирректорию)
+
+rm -rf назвавниедиректории/ - удаление директории со всеми вложеными папками и файлами
+rm -rf homefolder/
+
+clear - очистить терминал
+
+
+
+ПРОЦЕСС СОЗДАНИЯ НОВОГО КОРНЯ
+
+ЧТОБЫ ЗАПУСТИТЬ НОВЫЙ КОРЕНЬ НУЖНО
+1. Скопировать файл из  root/bin/bash  в новыйкорень//bin/bash
+2. Скопировать зависимости - те библиотеки, необх для работы bash
+bash - командный интерпритатор
+
+
+mkdir назвавниедиректории - создание директории
+mkdir testfolder
+
+mkdir назвавниедиректории/поддиректории - создание директории в директории
+mkdir testfolder/bin
+
+cp /назвавниедиректории/файл назвавниедиректории/поддиректории -  копирование файла
+cp /bin/bash testfolder/bin
+
+ldd /назвавниедиректории/файл - произойдёт вывод списка используемых приложением библиотеек
+ldd /bin/bash
+вывод (выводится список зависимостей)
+	linux-vdso.so.1 (0x00007ffc4b7be000)
+        libtinfo.so.6 => /lib/x86_64-linux-gnu/libtinfo.so.6 (0x00007f5ffe3f3000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f5ffe000000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f5ffe59b000)
+
+mkdir testfolder/lib - создаём директорию куда скопируем необх библиотеку
+mkdir testfolder/lib64 - создаём директорию куда скопируем необх библиотеку
+
+копируем библиотеки в эти созданные папки
+
+cp /lib/x86_64-linux-gnu/libtinfo.so.6 testfolder/lib
+cp /lib/x86_64-linux-gnu/libc.so.6 testfolder/lib
+cp /lib64/ld-linux-x86-64.so.2 testfolder/lib64
+
+chroot назвавниедиректории/ - создаем новый корневой каталог
+
+вывод
+	bash-5.2#
+
+exit - выход из нового корневого каталога, в каталог root
+
+
+РЕАЛИЗАЦИЯ РАБОТЫ КОМАНДЫ ls В НОВОМ КОРНЕ
+
+Копируем сам файл ls из root в наш testfolder
+cp /bin/ls testfolder/bin/
+
+ldd /bin/ls - смотрим зависимости
+вывод
+	linux-vdso.so.1 (0x00007ffcf00f5000)
+        libselinux.so.1 => /lib/x86_64-linux-gnu/libselinux.so.1 (0x000078eef0821000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000078eef0600000)
+        libpcre2-8.so.0 => /lib/x86_64-linux-gnu/libpcre2-8.so.0 (0x000078eef0566000)
+        /lib64/ld-linux-x86-64.so.2 (0x000078eef087b000)
+	
+копируем зависимости библиотеки в уже созданные папки lib и lib64 в новом корне testfolder
+
+cp /lib/x86_64-linux-gnu/libselinux.so.1 testfolder/lib
+cp /lib/x86_64-linux-gnu/libc.so.6 testfolder/lib
+cp /lib/x86_64-linux-gnu/libpcre2-8.so.0 testfolder/lib
+cp /lib64/ld-linux-x86-64.so.2 testfolder/lib64
+
+переходим в новый корень
+chroot testfolder/
+
+и теперь по идее здесь должна работать команда ls
+bash-5.2# ls
+вывод
+	bin  lib  lib64
+
+
+
+ИЗОЛЯЦИЯ ПРОЦЕССОВ УТИЛИТА UNSHARE
+
+ls -l /proc/$$/ns - вывод названий пространств имён (net pid mnt)
+вывод
+	total 0
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 cgroup -> 'cgroup:[4026531835]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 ipc -> 'ipc:[4026531839]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 mnt -> 'mnt:[4026531841]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 net -> 'net:[4026531840]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 pid -> 'pid:[4026531836]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 pid_for_children -> 'pid:[4026531836]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 time -> 'time:[4026531834]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 time_for_children -> 'time:[4026531834]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 user -> 'user:[4026531837]'
+	lrwxrwxrwx 1 root root 0 дек 21 14:24 uts -> 'uts:[4026531838]'
+
+lsns - вывод списка пространств имён, которые задействованы пользователями
+вывод
+
+        NS TYPE   NPROCS   PID USER             COMMAND
+4026531834 time      180     1 root             /sbin/init
+4026531835 cgroup    178     1 root             /sbin/init
+4026531836 pid       164     1 root             /sbin/init
+4026531837 user      179     1 root             /sbin/init
+4026531838 uts       171     1 root             /sbin/init
+4026531839 ipc       164     1 root             /sbin/init
+4026531840 net       176     1 root             /sbin/init
+4026531841 mnt       153     1 root             /sbin/init
+4026532179 mnt         1   413 root             ├─/usr/lib/systemd/systemd-u
+4026532180 uts         1   413 root             ├─/usr/lib/systemd/systemd-u
+4026532254 mnt         1   679 systemd-resolve  ├─/usr/lib/systemd/systemd-r
+4026532255 mnt         1   674 systemd-network  ├─/usr/lib/systemd/systemd-n
+4026532256 mnt         1   729 systemd-timesync ├─/usr/lib/systemd/systemd-t
+4026532257 uts         1   729 systemd-timesync ├─/usr/lib/systemd/systemd-t
+4026532258 mnt         1   843 polkitd          ├─/usr/lib/polkit-1/polkitd
+4026532259 uts         1   843 polkitd          ├─/usr/lib/polkit-1/polkitd
+4026532260 uts         1   926 syslog           ├─/usr/sbin/rsyslogd -n -iNO
+4026532261 mnt         1   942 root             ├─/usr/sbin/ModemManager
+4026532314 uts         1   850 root             ├─/usr/lib/systemd/systemd-l
+4026532316 mnt         1   850 root             ├─/usr/lib/systemd/systemd-l
+4026532409 mnt         2 22168 root             ├─/usr/libexec/fwupd/fwupd
+4026532410 mnt         1 22354 root             ├─/usr/libexec/upowerd
+4026532411 user        1 22354 root             └─/usr/libexec/upowerd
+4026531862 mnt         1    43 root             kdevtmpfs
+4026532265 mnt         1  2456 65535            /pause
+4026532266 ipc        12  2456 65535            /pause
+4026532267 pid         1  2456 65535            /pause
+4026532270 net         2  2747 65535            /pause
+4026532331 net         2  2879 65535            /pause
+4026532389 mnt         1  2747 65535            /pause
+4026532390 uts         2  2747 65535            /pause
+4026532391 ipc         2  2747 65535            /pause
+4026532392 pid         1  2747 65535            /pause
+4026532393 mnt        11  3401 root             /usr/local/bin/runsvdir -P /
+4026532394 pid        11  3401 root             /usr/local/bin/runsvdir -P /
+4026532395 mnt         1  2819 999              /usr/bin/kube-controllers
+4026532396 pid         1  2819 999              /usr/bin/kube-controllers
+4026532397 cgroup      1  2819 999              /usr/bin/kube-controllers
+4026532400 mnt         1  2879 65535            /pause
+4026532401 uts         2  2879 65535            /pause
+4026532402 ipc         2  2879 65535            /pause
+4026532403 pid         1  2879 65535            /pause
+4026532404 mnt         1  3002 root             /coredns -conf /etc/coredns/
+4026532405 pid         1  3002 root             /coredns -conf /etc/coredns/
+4026532406 cgroup      1  3002 root             /coredns -conf /etc/coredns/
+
+man unshare - вывод руководства пользователя утилитой
+
+ip netns list - вывод сетевых пространств имён
+вывод
+	cni-2e359081-e496-b258-5065-6b6dc965fd24 (id: 0)
+	cni-45fd3d5f-eced-d6bd-3145-98dcf4b6643a (id: 1)
+
+ip netns add testns - создать ИЗОЛИРОВАННОЕ СЕТЕВОЕ пространство имён
+ip netns list
+вывод
+	cni-2e359081-e496-b258-5065-6b6dc965fd24 (id: 0)
+	cni-45fd3d5f-eced-d6bd-3145-98dcf4b6643a (id: 1)
+	testns - создали
+
+ip netns exec testns bash - в изолированном пространсте имён testns выполнить команду bash
+
+Благодаря bash - командному интерпритатору, мы можем выполнять команды, например:
+
+ip a - вывести все сетевые интерфейсы, которые доступны коммандному интерпритатору bash
+вывод
+	1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    	link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+доступен только loopback интерфейс, который завязан сам на себя
+
+exit - выйти из изолированного пространства имён bush
+
+ip a - вывести сетевые интерфейсы (теперь для всех пространств имён)
+вывод
+____________________________________________________________________________________________________
+	1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+root@usrv:~# ^C
+root@usrv:~# ^C
+root@usrv:~# exit
+exit
+root@usrv:~# ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:c9:f5:3d brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.32/24 metric 100 brd 192.168.1.255 scope global dynamic enp0s3
+       valid_lft 70888sec preferred_lft 70888sec
+    inet6 fe80::a00:27ff:fec9:f53d/64 scope link
+       valid_lft forever preferred_lft forever
+3: cali8bbe53ea3de@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netns cni-2e359081-e496-b258-5065-6b6dc965fd24
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link
+       valid_lft forever preferred_lft forever
+4: calic8b8a8c98a7@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netns cni-45fd3d5f-eced-d6bd-3145-98dcf4b6643a
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link
+       valid_lft forever preferred_lft forever
+5: vxlan.calico: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default
+    link/ether 66:27:d3:6e:76:59 brd ff:ff:ff:ff:ff:ff
+    inet 10.1.76.64/32 scope global vxlan.calico
+       valid_lft forever preferred_lft forever
+    inet6 fe80::6427:d3ff:fe6e:7659/64 scope link
+       valid_lft forever preferred_lft forever
+____________________________________________________________________________________________________
+
+
+СОЗДАДИМ ВИРТУАЛЬНОЕ СЕТЕВОЕ УСТРОЙСТВО
+
+ip link add veth0 type veth peer name veth1 - создаём виртуальную сетевую карту с именем veth1
+
+ip link set veth1 netns testns - добавим вирт сет карту veth1 в изолир простр имён testns
+
+
+СЕЙЧАС МЫ НАХОДИМСЯ В ХОСТОВОЙ СИСТЕМЕ
+
+ip a - вывод
+
+вывод
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: enp0s3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 08:00:27:c9:f5:3d brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.32/24 metric 100 brd 192.168.1.255 scope global dynamic enp0s3
+       valid_lft 69582sec preferred_lft 69582sec
+    inet6 fe80::a00:27ff:fec9:f53d/64 scope link
+       valid_lft forever preferred_lft forever
+3: cali8bbe53ea3de@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netns cni-2e359081-e496-b258-5065-6b6dc965fd24
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link
+       valid_lft forever preferred_lft forever
+4: calic8b8a8c98a7@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UP group default
+    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netns cni-45fd3d5f-eced-d6bd-3145-98dcf4b6643a
+    inet6 fe80::ecee:eeff:feee:eeee/64 scope link
+       valid_lft forever preferred_lft forever
+5: vxlan.calico: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1450 qdisc noqueue state UNKNOWN group default
+    link/ether 66:27:d3:6e:76:59 brd ff:ff:ff:ff:ff:ff
+    inet 10.1.76.64/32 scope global vxlan.calico
+       valid_lft forever preferred_lft forever
+    inet6 fe80::6427:d3ff:fe6e:7659/64 scope link
+       valid_lft forever preferred_lft forever
+9: veth0@if8: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 6a:fb:cc:97:cb:97 brd ff:ff:ff:ff:ff:ff link-netns testns
+
+В ХОСТОВОЙ системе виртуальное устройство veth0
+
+
+ip addr add 10.0.0.1/24 dev veth0 - добавим ip адрес нашему вирт устройству
+ip a - проверим
+вывод
+	9: veth0@if8: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    	link/ether 6a:fb:cc:97:cb:97 brd ff:ff:ff:ff:ff:ff link-netns testns
+    	inet 10.0.0.1/24 scope global veth0
+       	valid_lft forever preferred_lft forever
+сетевая карта в состоянии state DOWN, давайте её включим
+
+ip link set dev veth0 up - включение вирт сет карты
+ip a - проверим
+вывод
+	9: veth0@if8: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 qdisc noqueue state 	LOWERLAYERDOWN group default qlen 1000
+    	link/ether 6a:fb:cc:97:cb:97 brd ff:ff:ff:ff:ff:ff link-netns testns
+    	inet 10.0.0.1/24 scope global veth0
+       	valid_lft forever preferred_lft forever
+
+сетевая карта запущена state 	LOWERLAYERDOWN
+
+
+
+
+ТЕПЕРЬ ОТКРОЕМ ЕЩЕ ОДНУ КОНСОЛЬ, В НЕЙ МЫ БУДЕМ РАБОТАТЬ ИЗ ТЕСТОВОГО ИЗОЛ ПРОСТРАНСТВА ИМЁН
+
+
+ip netns exec testns bash - войдем в изолированное сетевое пространство имен testns
+
+ip a - посмотрим
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+8: veth1@if9: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 8a:70:cc:7a:2e:35 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+
+ip addr add 10.0.0.2/24 dev veth1 - добавим ip адрес нашему вирт устройству
+ip link set dev veth1 up - включение вирт сет карты
+
+ip a - проверим
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+8: veth1@if9: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+    link/ether 8a:70:cc:7a:2e:35 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet 10.0.0.1/24 scope global veth1
+       valid_lft forever preferred_lft forever
+    inet 10.0.0.2/24 scope global secondary veth1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::8870:ccff:fe7a:2e35/64 scope link
+       valid_lft forever preferred_lft forever
+всё запущено!
+
+ping 10.0.0.1 - сделаем ping
+вывод
+PING 10.0.0.1 (10.0.0.1) 56(84) bytes of data.
+64 bytes from 10.0.0.1: icmp_seq=1 ttl=64 time=0.175 ms
+64 bytes from 10.0.0.1: icmp_seq=2 ttl=64 time=0.066 ms
+64 bytes from 10.0.0.1: icmp_seq=3 ttl=64 time=0.116 ms
+64 bytes from 10.0.0.1: icmp_seq=4 ttl=64 time=0.082 ms
+64 bytes from 10.0.0.1: icmp_seq=5 ttl=64 time=0.096 ms
+64 bytes from 10.0.0.1: icmp_seq=6 ttl=64 time=0.085 ms
+64 bytes from 10.0.0.1: icmp_seq=7 ttl=64 time=0.111 ms
+
+ТЕ НАШЕ ТЕСТОВОЕ ПРОСТРАНСТВО ИМЁН ВЗАИМОДЕЙСТВУЕТ С ХОСТОВОЙ СИСТЕМОЙ!!!
+
+и наоборот из ХОСТовой ситемы
+ping 10.0.0.2
+вывод
+PING 10.0.0.2 (10.0.0.2) 56(84) bytes of data.
+64 bytes from 10.0.0.2: icmp_seq=1 ttl=64 time=0.103 ms
+64 bytes from 10.0.0.2: icmp_seq=2 ttl=64 time=0.106 ms
+64 bytes from 10.0.0.2: icmp_seq=3 ttl=64 time=0.079 ms
+64 bytes from 10.0.0.2: icmp_seq=4 ttl=64 time=0.105 ms
+64 bytes from 10.0.0.2: icmp_seq=5 ttl=64 time=0.074 ms
+64 bytes from 10.0.0.2: icmp_seq=6 ttl=64 time=0.094 ms
+64 bytes from 10.0.0.2: icmp_seq=7 ttl=64 time=0.096 ms
+
+МЫ СИМИТИРОВАЛИ РАБОТУ ДОКЕРА С ИМЕННЫМИ ПРОСТРАНСТВАМИ
+
+
+
+//////////////////////////////////////////////////////////////
+
+
+СОЗДАТЬ НОВОЕ ПРОСТРАНСТВО ИМЁН МОЖНО:
+
+1. ip netns add testns - создать ИЗОЛИРОВАННОЕ СЕТЕВОЕ пространство имён
+2. unshare --net /bin/bash - утилитой unshare, указав тип --net и командный интерпритатор /bin/bash 
+
+ip a - проверим
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+теперь здесь можно добавить вирт сет карты, ip адреса и с этим работать
+exit
+
+
+//////////////////////////////////////////////////////////////
+
+ЗАДАНИЕ ПОЧТИ ПОЛНОСТЬЮ ИЗОЛИРОВАТЬ НАШ ПРОЦЕСС
+изолировать пространства имён: pid, net, fork, mount
+
+unshare --pid --net --fork --mount-proc /bin/bash - сделали
+
+ip a
+1: lo: <LOOPBACK> mtu 65536 qdisc noop state DOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+
+ps -aux - вывод процессов (теперь изолированных)
+вывод
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  0.0   7604  4224 pts/1    S    16:15   0:00 /bin/bash
+root           9 63.6  0.0  12184  5248 pts/1    R+   16:18   0:00 ps -aux
+
+exit
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

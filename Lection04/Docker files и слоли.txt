@@ -1,0 +1,173 @@
+1. Установим шуточное приложение cowsay
+apt install cowsay
+
+
+
+2. Запустим его
+/ust/games/cowsay "GeekBrains"
+/ust/games/cowthink "GeekBrains"
+
+
+
+3. Начнём создание Docker файла
+
+vi Dockerfile -- в редакторе vim создаём и редактируем docker файл
+
+FROM ubuntu:22.10 -- первый слой, базовый образ, родительский
+RUN apt-get update -- обновление пакетов
+RUN apt-get install -y cowsay -- установка утилиты cowsay
+RUN ln -s /usr/games/cowsay /usr/bin/cowsay -- создание ссылки для запуска
+CMD ["cowsay"] -- команда запуска утилиты - добавление точки входа
+
+cat Dockerfile -- проверяем, файл готов!
+
+
+
+4. Собираем его
+
+docker build -t cowsaytest .
+
+cowsaytest -- название
+. -- файл для сборки находится в дирректории где мы находимся
+
+
+
+5. Проверим корректность сборки
+
+docker run -it cowsaytest bash -- зашли в контейнер
+
+ps -aux -- проверили процессы
+
+hostname -- проверим что поменялось имя хоста
+
+cowsay "Hi" -- запустим нашу утилиту находять в контейнере, запускается, всё ок
+
+exit -- выходим
+
+
+
+6. Запуск вне контейнера
+Находимся в хост системе
+
+docker run cowsaytest cowsay "Hi"
+
+все выполнилось -- всё ок!
+
+docker images -- выведем список наших контейнеров, где видим cowsaytest весит 160 Мб - это достаточно много, так как ubuntu весит 70.2Мб
+
+
+
+7. Оптимизируем
+
+1шаг:
+
+vi Dockerfile -- откроем наш файл
+
+FROM ubuntu:22.10 
+RUN apt-get update && \                      -- объединим слои в один
+    apt-get install -y cowsay && \           -- объединим слои в один
+    ln -s /usr/games/cowsay /usr/bin/cowsay  -- объединим слои в один
+RUN rm -rf /var/lib/apt/lists/*              -- удалим все кеши, которые были скаченны на первом этапе
+CMD ["cowsay"]
+
+docker build -t cowsaytest . -- собираем
+
+docker images -- выведем список наших контейнеров, где видим cowsaytest опять весит 160 Мб!!!
+Почему - потому что удаление кешей было в отдельном слое, и кеши были недоступны
+
+
+
+2шаг:
+
+vi Dockerfile -- откроем наш файл опять
+
+FROM ubuntu:22.10 
+RUN apt-get update && \                           -- объединим слои в один
+    apt-get install -y cowsay && \                -- объединим слои в один
+    ln -s /usr/games/cowsay /usr/bin/cowsay && \  -- объединим слои в один
+    rm -rf /var/lib/apt/lists/*                   -- объединим слои в один
+CMD ["cowsay"]
+
+docker build -t cowsaytest . -- собираем
+
+docker images -- выведем список наших контейнеров, где видим cowsaytest 125Мб!
+
+
+
+3шаг:
+
+vi Dockerfile -- откроем наш файл опять
+
+FROM alpine                    -- будем использовать более легковесный образ alpine 
+RUN apt-get update && \                           
+    apt-get install -y cowsay && \                
+    ln -s /usr/games/cowsay /usr/bin/cowsay && \  
+    rm -rf /var/lib/apt/lists/*                   
+CMD ["cowsay"]
+
+docker build -t cowsaytest . -- собираем
+
+При сборке ошибка! /bin/sh: apt-get not found
+у alpine другой пакетный менеджер, нет команд apt-get update, apt-get install!
+
+команды другие:
+
+FROM alpine
+ RUN apk update && \
+ apk add cowsay && \
+ --update-cache \
+ --repository https://alpine.global.ssl.fastly.net/alpine/edge/community \
+ --repository https://alpine.global.ssl.fastly.net/alpine/edge/main \
+ --repository https://dl-3.alpinelinux.org/alpine/edge/testing && \
+ rm -rf /var/cache/apk/*
+ CMD [“cowsay”]
+
+docker build -t cowsaytest . -- собираем
+docker images -- выведем список наших контейнеров, где видим cowsaytest 42.4Мб! - это оч хорошо, размер меньше в 4 раза
+
+8. Добавим в образ alpine текстовый файл
+
+открываем..
+
+FROM alpine
+ RUN echo "123" > /test -- добавляем
+ RUN apk update && \
+ apk add cowsay && \
+ --update-cache \
+ --repository https://alpine.global.ssl.fastly.net/alpine/edge/community \
+ --repository https://alpine.global.ssl.fastly.net/alpine/edge/main \
+ --repository https://dl-3.alpinelinux.org/alpine/edge/testing && \
+ rm -rf /var/cache/apk/*
+ CMD [“cowsay”]
+
+собираем.. идёт долгая большая пересборка
+размер не изменился..
+
+теперь...
+
+FROM alpine
+ RUN apk update && \
+ apk add cowsay && \
+ --update-cache \
+ --repository https://alpine.global.ssl.fastly.net/alpine/edge/community \
+ --repository https://alpine.global.ssl.fastly.net/alpine/edge/main \
+ --repository https://dl-3.alpinelinux.org/alpine/edge/testing && \
+ rm -rf /var/cache/apk/*
+ RUN echo "123" > /test -- перенесём эту строчку на самый верхний слой!
+ CMD [“cowsay”]
+
+собираем.. сборка идёт не в полном объёме, быстрее намного, не надо скачивать репозитории, сохранять кеши итд!
+
+
+
+
+
+
+
+
+
+
+
+
+
+

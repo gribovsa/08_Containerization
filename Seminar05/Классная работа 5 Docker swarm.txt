@@ -1,0 +1,100 @@
+Задача 1:
+Запустить кластер: менеджер и два рабочих.
+
+Создал 3 виртуальные машины ОС Ubuntu 24
+
+usrv1: 192.168.1.35
+uwork1: 192.168.1.36
+uwork2: 192.168.1.37
+
+
+На usrv (будет манагром)
+
+docker swarm init - инициализация манагера
+
+-------------------------------------------------------------------------------
+root@usrv1:~# docker swarm init
+Swarm initialized: current node (sz94ti8m6axfcxofgklqqkvtv) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-24i490ynws12ynap36v6ra7em4a7d64umbflr89aomxdipuvci-6cc5yhfoty9vkxdeg3whdounq 192.168.1.35:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.
+-------------------------------------------------------------------------------
+
+Копирую join и вставляю его на других нодах (на вирт машинах)
+
+
+
+
+
+На uwork1 (будет рабочим)
+
+docker swarm join --token SWMTKN-1-24i490ynws12ynap36v6ra7em4a7d64umbflr89aomxdipuvci-6cc5yhfoty9vkxdeg3whdounq 192.168.1.35:2377
+
+-------------------------------------------------------------------------------
+root@uwork1:~# docker swarm join --token SWMTKN-1-24i490ynws12ynap36v6ra7em4a7d64umbflr89aomxdipuvci-6cc5yhfoty9vkxdeg3whdounq 192.168.1.35:2377
+This node joined a swarm as a worker.
+root@uwork1:~#
+-------------------------------------------------------------------------------
+
+
+
+
+На uwork2 (будет рабочим)
+
+docker swarm join --token SWMTKN-1-24i490ynws12ynap36v6ra7em4a7d64umbflr89aomxdipuvci-6cc5yhfoty9vkxdeg3whdounq 192.168.1.35:2377
+
+-------------------------------------------------------------------------------
+root@uwork2:~# docker swarm join --token SWMTKN-1-24i490ynws12ynap36v6ra7em4a7d64umbflr89aomxdipuvci-6cc5yhfoty9vkxdeg3whdounq 192.168.1.35:2377
+This node joined a swarm as a worker.
+root@uwork2:~#
+-------------------------------------------------------------------------------
+
+
+
+
+На usrv1 проверим
+
+docker node ls
+
+-------------------------------------------------------------------------------
+root@usrv1:~# docker node ls
+ID                            HOSTNAME   STATUS    AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+sz94ti8m6axfcxofgklqqkvtv *   usrv1      Ready     Active         Leader           27.4.1
+or3hll957wtruysjg5pzfxpih     uwork1     Ready     Active                          27.4.1
+l3un9hgpg9fb2e4z4mozmvn0x     uwork2     Ready     Active                          27.4.1
+root@usrv1:~#
+-------------------------------------------------------------------------------
+
+
+
+Задача 2. 
+Создать простейший сервис состоящий из 3х реплик
+Использовать
+Nginx на Alpine
+посмотреть на каких нодах запустился сервис
+
+
+На ноде usrv1 (она у нас манагер)
+
+docker service create --name test1 --replicas 3 nginx:alpine
+имя --name test1
+количество --replicas 3
+
+---------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+

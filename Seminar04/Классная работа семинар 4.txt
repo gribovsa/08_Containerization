@@ -1,0 +1,375 @@
+Задание 1. Запустить контейнер с утилитой cowsay
+аналогично тому, что было на лекции, см лекцию
+
+
+1. Установим шуточное приложение cowsay в хост ситеме
+apt install cowsay
+
+
+
+2. Запустим его
+/usr/games/cowsay "GeekBrains"
+/usr/games/cowthink "GeekBrains"
+
+
+3. vi Dockerfile -- создадим и откроем наш файл 
+
+FROM ubuntu                                       --- на платформе ubuntu (ставлю самую последнюю версию)
+RUN apt-get update && \                           --- обновим пакеты содержащие новые компоненты
+    apt-get install -y cowsay && \                --- установим новые компоненты - cowsay
+    ln -s /usr/games/cowsay /usr/bin/cowsay && \  --- копируем ярлык cowsay из хост системы (для этого мы его и ставили на хосте)
+    rm -rf /var/lib/apt/lists/*                   --- удаляем кэш файлы
+CMD ["cowsay"]
+
+Выйти из vim и сохранить
+Esc --- выйти из режима вставки
+ShiftZZ --- выйти и сохранить
+
+docker build -t cowsaytest . --- собираем
+
+docker images --- выведем список наших образов, где видим cowsaytest 125Мб!
+docker ps -a --- выведем список контейнеров
+
+4. Запуск вне контейнера
+Находимся в хост системе
+
+docker run cowsaytest cowsay "Hi"
+
+все выполнилось --- всё ок!
+
+
+
+Задание 2. Создать файл example.txt, положить его рядом с Dockerfile (по умолч в дир root)
+и скопировать его внутрь контейнера
+
+
+root@usrv:~# ls --- проверим
+Вывод:
+ Dockerfile homefolder   homework02   snap   test   testfolder   test.txt
+
+vi example.txt --- создаём
+
+root@usrv:~# ls --- проверяем
+Вывод:
+ Dockerfile   example.txt   homefolder   homework02   snap   test   testfolder   test.txt
+
+
+vi Dockerfile --- правим 
+
+FROM ubuntu
+RUN apt-get update && \
+    apt-get install -y cowsay &&\
+    ln -s /usr/games/cowsay /usr/bin/cowsay &&\
+    rm -rf /var/lib/apt/lists/*
+COPY example.txt /  --- копируем в корень --- сборка происходит быстро потому как действие с файлом в самом верхнем слое
+CMD ["cowsay"]
+
+docker rmi cowsaytest --force --- удаляем старый
+
+docker build -t cowsaytest . --- собираем
+
+docker run -it cowsaytest bash 
+
+root@usrv:~# docker run -it cowsaytest bash -- зашли в контейнер
+root@92183f0926f1:/# ls
+bin  boot  dev  etc  example.txt  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+root@92183f0926f1:/#
+скопировали, всё ок
+
+
+
+7:02
+Заданиее 3. Создать образ и запустить его
+
+root@usrv:~# rm Dockerfile -- удалим старый Dockerfile
+
+vi Dockerfile -- создадим первый вариант
+
+FROM ubuntu
+COPY example.txt /
+CMD sleep 600
+
+
+vi Dockerfile -- создадим второй вариант
+
+FROM ubuntu
+COPY example.txt /
+CMD sleep 5
+
+
+создали
+
+root@usrv:~# cat Dockerfile
+FROM ubuntu
+COPY example.txt /
+CMD sleep 600
+
+root@usrv:~#
+
+
+Соберём первый вариант
+docker build -t test .
+
+root@usrv:~# docker images
+REPOSITORY              TAG       IMAGE ID       CREATED          SIZE
+test                    latest    f55708a36fed   44 seconds ago   78.1MB
+postgres                latest    4bc6cc20ca7a   6 weeks ago      435MB
+phpmyadmin/phpmyadmin   latest    933569f3a9f6   17 months ago    562MB
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED        STATUS                    PORTS     NAMES
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   39 hours ago   Exited (0) 36 hours ago             phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   39 hours ago   Exited (0) 36 hours ago             postgres
+
+Запустим 
+docker run --name test -d test --- запустим в режиме демона
+
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED         STATUS                    PORTS     NAMES
+116dc1981eeb   test                    "/bin/sh -c 'sleep 6…"   2 minutes ago   Up 2 minutes                        test
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   39 hours ago    Exited (0) 36 hours ago             phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   39 hours ago    Exited (0) 36 hours ago             postgres
+root@usrv:~#
+Есть!
+
+Зайдём внутрь
+docker exec -it test bash
+root@116dc1981eeb:/#ls
+bin  boot  dev  etc  example.txt  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+root@116dc1981eeb:/#
+exit
+root@usrv:~#
+
+Остановим и удалим
+root@usrv:~# docker stop test
+test
+root@usrv:~# docker rm test
+test
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED        STATUS                    PORTS     NAMES
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   39 hours ago   Exited (0) 37 hours ago             phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   39 hours ago   Exited (0) 37 hours ago             postgres
+root@usrv:~#
+
+Удалим образ
+root@usrv:~# docker images
+REPOSITORY              TAG       IMAGE ID       CREATED          SIZE
+test                    latest    f55708a36fed   15 minutes ago   78.1MB
+postgres                latest    4bc6cc20ca7a   6 weeks ago      435MB
+phpmyadmin/phpmyadmin   latest    933569f3a9f6   17 months ago    562MB
+root@usrv:~# docker rmi test --- удалим
+Untagged: test:latest
+Deleted: sha256:f55708a36fedcf6f1cf9f171befc0feeee2667acdcfa1d8a464f2c303064f541
+root@usrv:~# docker images
+REPOSITORY              TAG       IMAGE ID       CREATED         SIZE
+postgres                latest    4bc6cc20ca7a   6 weeks ago     435MB
+phpmyadmin/phpmyadmin   latest    933569f3a9f6   17 months ago   562MB
+root@usrv:~#
+Ок!!!
+
+запустим второй вариант
+
+FROM ubuntu
+COPY example.txt /
+CMD sleep 5  --- будет 5 секунд
+
+
+Соберём первый вариант
+docker build -t test .
+
+
+Запустим 
+docker run --name test -d test --- запустим в режиме демона
+
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED          STATUS                      PORTS     NAMES
+17aebabb0896   test                    "/bin/sh -c 'sleep 5'"   23 seconds ago   Exited (0) 13 seconds ago             test
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   39 hours ago     Exited (0) 37 hours ago               phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   40 hours ago     Exited (0) 37 hours ago               postgres
+
+Видим, что контейнер остановлн STATUS: Exited (0) 13 seconds ago
+
+root@usrv:~# docker start test --- запустим опять
+
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED              STATUS                    PORTS     NAMES
+17aebabb0896   test                    "/bin/sh -c 'sleep 5'"   About a minute ago   Up 6 seconds                        test
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   39 hours ago         Exited (0) 37 hours ago             phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   40 hours ago         Exited (0) 37 hours ago             postgres
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED              STATUS                    PORTS     NAMES
+17aebabb0896   test                    "/bin/sh -c 'sleep 5'"   About a minute ago   Up 9 seconds                        test
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   39 hours ago         Exited (0) 37 hours ago             phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   40 hours ago         Exited (0) 37 hours ago             postgres
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED              STATUS                     PORTS     NAMES
+17aebabb0896   test                    "/bin/sh -c 'sleep 5'"   About a minute ago   Exited (0) 5 seconds ago             test
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   39 hours ago         Exited (0) 37 hours ago              phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   40 hours ago         Exited (0) 37 hours ago              postgres
+
+И опять через 5 секунд останавливаетсмя Exited (0) 5 seconds ago
+
+
+Задание 4.
+
+vi Dockerfile -- создадим докерфайл
+
+FROM ubuntu
+COPY example.txt /
+CMD sleep 600
+
+
+Соберём 
+docker build -t test .
+
+
+Запустим 
+docker run --name test -d test
+
+
+Проверим
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED          STATUS                    PORTS     NAMES
+36def95526cd   test                    "/bin/sh -c 'sleep 6…"   11 seconds ago   Up 9 seconds                        test
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   40 hours ago     Exited (0) 37 hours ago             phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   40 hours ago     Exited (0) 37 hours ago             postgres
+root@usrv:~#
+
+Работает.
+
+docker stop test
+docker rm test
+docker rmi test --force
+
+
+
+vi Dockerfile -- изменим докерфайл
+
+FROM ubuntu
+COPY example.txt /
+ENTRYPOINT sleep 600
+
+
+Соберём 
+docker build -t test .
+
+
+Запустим 
+docker run --name test -d test
+
+Всё работает.
+
+Теперь остановим
+docker stop test
+
+Удалим контейнер
+docker rm test
+
+И попробуем запустить контейнер из образа в интерактивном режиме
+docker run -it test bash
+В контейнер мы не войдём, так как не получится переопределить аргументы (ENTRYPOINT)
+у CMD получится переопределить аргументы
+Контейнер создан, но войти в него нельзя, он висел
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED         STATUS                        PORTS     NAMES
+66d4fba1cf3a   test                    "/bin/sh -c 'sleep 6…"   2 minutes ago   Exited (130) 15 seconds ago             charming_ptolemy
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   40 hours ago    Exited (0) 37 hours ago                 phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   40 hours ago    Exited (0) 37 hours ago                 postgres
+root@usrv:~#
+
+
+Задача 5.
+Создать контейнер ubuntu, установим nginx, открыть 80 порт, запустить файлик
+
+vi Dockerfile
+
+FROM ubuntu
+RUN apt-get update && \
+    apt-get install -y nginx &&\          --- устанавливаем nginx
+    rm -rf /var/lib/apt/lists/*           --- удаляем кэши
+RUN echo 'Hi, I am in your container' \ 
+        >/usr/share/nginx/html/index.html --- добавим строку 'Hi, I am in your container' в файл index.html
+EXPOSE 80                                 --- откроем порт 80
+CMD ["nginx", "-g", "daemon off;"]        --- точка входа nginx, daemon off
+
+
+
+Соберём 
+docker build -t test .
+
+
+Запустим 
+docker run -d -p 8081:80 test             --- простого EXPOSE 80 в файле не достаточно, необходимо сделать директивой  -p 8081:80
+
+Проверим
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED              STATUS                    PORTS                                     NAMES
+a20277d3b1aa   test                    "nginx -g 'daemon of…"   About a minute ago   Up About a minute         0.0.0.0:8081->80/tcp, [::]:8081->80/tcp   eager_austin
+4d3e53938003   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   40 hours ago         Exited (0) 38 hours ago                                             phpmyadmin
+4907c63f447c   postgres                "docker-entrypoint.s…"   41 hours ago         Exited (0) 38 hours ago                                             postgres
+root@usrv:~#
+
+
+Запускаем
+Curl — это кросс-платформенная утилита командной строки, которая позволяет передавать или загружать данные с сервера, 
+устанавливая подключение через различные протоколы: HTTP, HTTPS, FTP, SFTP, TFTP, SCP, Telnet, DICT, LDAP, POP3, IMAP, SMTP и другие.
+
+root@usrv:~# curl localhost:8081
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+root@usrv:~#
+
+Получаем вход в nginх через 80 порт
+
+
+root@usrv:~# docker stop eager_austin - останавливаем контейнер
+eager_austin
+root@usrv:~# docker rm eager_austin - удаляем контейнер
+eager_austin
+root@usrv:~# docker rmi test - удаляем образ
+Untagged: test:latest
+Deleted: sha256:610ba6c04ce5dd0443ca6d25d550dc34f2e3a7b75437018c88073b79e335a03c
+root@usrv:~#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

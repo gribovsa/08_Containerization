@@ -1,0 +1,166 @@
+
+УСТАНОВКА
+
+Первое, что нужно сделать- открыть сайт https://docs.docker.com/get-docker/.
+Далее- выбрать Docker под нужную ОС. В нашем случае хост-системой будет
+выступать Linux Ubuntu.
+https://docs.docker.com/engine/install/ubuntu/
+
+Читаем Installation methods
+
+
+Чтобы удалить все конфликтующие пакеты, выполните следующую команду:
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+
+
+Образы, контейнеры, тома и сети, хранящиеся в /var/lib/docker/, не удаляются автоматически при удалении Docker. Если вы хотите начать с чистой установки и предпочитаете очистить все существующие данные, прочтите раздел об удалении Docker Engine.
+
+
+1. Удалить Docker Engine
+Удалить пакеты Docker Engine, CLI, containerd и Docker Compose:
+
+sudo apt-get purge docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras
+
+
+2. Образы, контейнеры, тома или пользовательские файлы конфигурации на вашем хосте не удаляются автоматически. Чтобы удалить все образы, контейнеры и тома:
+
+sudo rm -rf /var/lib/docker
+sudo rm -rf /var/lib/containerd
+
+
+3. Удалить список источников и брелоки
+
+sudo rm /etc/apt/sources.list.d/docker.list
+sudo rm /etc/apt/keyrings/docker.asc
+
+Вам придется вручную удалить все отредактированные файлы конфигурации.
+
+
+Installation methods
+
+
+Install using the apt repository
+
+
+1. Настройте репозиторий Docker apt.
+
+
+# Добавьте официальный ключ GPG Docker:
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Добавьте репозиторий в источники Apt:
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+
+Убедимся, что получили ключи и репозиторий
+ls /etc/apt/keyrings
+cat /etc/apt/sources.list.d/docker.list
+
+
+
+2. Установите пакеты Docker.
+
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+3. Убедитесь, что установка прошла успешно, запустив образ hello-world:
+
+sudo docker run hello-world
+
+вывод:
+Hello from Docker! - всё хорошо, всё успешно!
+можно зайти на Docker Hub, найти там этот образ и сравнить вывод.
+
+
+
+
+СПИСОК КОМАНД
+
+docker--help - выведет список доступных команд, если вы вдруг что-то забудете.
+
+docker <command> --help - выведет информацию о команде. 
+Пример: docker images --help.
+
+docker --version - выведет нам версию установленного докера.
+
+docker info -  вывести больше информации о рабочей системе!!!
+
+_____________________________________________________________
+работа с контейнерами
+
+docker pull ubuntu - только скачать образ, нонеразворачивать
+контейнер.
+
+docker pull ubuntu:18.04 - скачать образ ubuntu версии 18.04
+
+docker images  - посмотреть список скачанных образов
+
+docker rmi ubuntu:18.04 - удалить образ ubuntu версии 18.04
+
+docker rmi $(docker images -aq) можно просто удалить сразу все
+
+docker rmi $(docker images -aq) --force удалить даже то что система не смогла удалить
+напр когда из образа запущен контейнер
+
+docker ps -a - посмотреть статистику запуска контейнеров
+
+______________________________________________________________
+запуск контейнеров
+
+docker run -it ubuntu bash - запустить в it(интерактивном) режиме а не в фоновом
+ а приписка bash говорит, какую команду из контейнера
+ необходимо запустить для работы. В частности, можно запустить командный
+ интерпретатор bash, shell и, тем самым, остаться работать внутри контейнера.
+
+docker run-it ubuntu date, система просто
+ выведет нам текущую дату и время и завершит работу контейнера.
+
+
+Итак, запускать контейнер мы научились, а теперь давайте сделаем
+ публикацию портов. То есть сделаем контейнер доступным извне (аналог NAT у
+ маршрутизаторов).
+
+
+docker run --publish 8080:80 nginx - запустим контейнер nginx
+открыть изнутри контейнера порт 80 и сделать его доступным
+снаружи через порт 8080
+
+docker run -d --publish 8080:80 nginx - запуск контейнера в режиме демона, т.е в фоновом режиме
+
+curl 127.0.0.1:8080 - проверим
+вывод: Welcome to nginx!
+
+
+docker run --name GeekBrains ubuntu - установить имя запускаемому контейнеру
+
+docker start GeekBrains - запуск контейнера по имени
+
+____________________________________________________________________
+удаление контейнеров
+
+docker rm GeekBrains - удаление контейнера GeekBrains по имени
+
+docker rm $(docker ps -a -q) - удаление всех контейнеров
+
+_____________________________________________________________________
+docker stop <IDконтейнера> - удаление контейнера по ID
+
+_____________________________________________________________________
+docker system df - посмотреть ресурсы (смотреть занятое место на диске)
+
+docker system prune-af - удалить неиспользуемые данные и очистить дисковое пространство
+
+
+
+
+
+
+
+
+

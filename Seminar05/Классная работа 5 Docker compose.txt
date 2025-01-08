@@ -1,0 +1,525 @@
+*********
+Задача1.
+Запустить два контейнера
+первый с БД mysql
+второй c Web phpmyadmin
+ 
+
+1й контейнер
+
+docker run --name some-mysql -e MYSQL_ROOT_PASSWORD=123456 -d mysql
+
+--name имя
+имя контейнера будет: some-mysql
+логин: root 
+-e enviroment окр среда MYSQL_ROOT_PASSWORD 
+пароль: 123456
+-d в режиме демона
+из образа в dockerhube: mysql последняя версия (напр mysql:8.0.31)
+
+
+
+2й контейнер
+
+docker run --name myphp -d --link some-mysql:db -p 8081:80 phpmyadmin/phpmyadmin
+
+имя контейнера будет: myphp
+связь с контейнером --link some-mysql:db
+публикуем 80 порт контейнера на 8081 порт хоста (Теперь контейнер myphp будет доступен по адресу http://localhost:8081.)
+
+Проверяем
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE                   COMMAND                  CREATED          STATUS          PORTS                                     NAMES
+5f29e9f21e79   phpmyadmin/phpmyadmin   "/docker-entrypoint.…"   6 minutes ago    Up 6 minutes    0.0.0.0:8081->80/tcp, [::]:8081->80/tcp   myphp
+3f9c3c071328   mysql                   "docker-entrypoint.s…"   19 minutes ago   Up 19 minutes   3306/tcp, 33060/tcp                       some-mysql
+
+
+Можем пойти в браузер
+
+192.168.1.32:8081
+
+Авторизация:
+login: root
+password: 123456
+
+Всё работает, можем через web phpmyadmin администрировать БД на нашем  контейнере mysql.
+
+
+Останавливаем и удаляем всё
+root@usrv:~# docker stop myphp some-mysql
+myphp
+some-mysql
+root@usrv:~# docker rm myphp some-mysql
+myphp
+some-mysql
+root@usrv:~# docker rmi mysql phpmyadmin/phpmyadmin
+
+Проверяем
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+root@usrv:~# docker images
+REPOSITORY   TAG       IMAGE ID   CREATED   SIZE
+
+
+
+
+*********
+Задача2.
+Запустим два аналогичных контейнера с помощью docker compose
+первый с БД mariadb
+второй c Web adminer - заходим на docker hub и смотрим что это такое
+там есть пример yml файла, для того чтобы запустить контейнер с помощью docker compose
+
+Установим его
+root@usrv:~# apt install docker-compose
+
+Создаём файл yml
+root@usrv:~# vi docker-compose.yml
+
+Ins - вход в режим вставки в редакторе vim
+
+version: '3.9'
+
+services:
+
+  adminer:
+    image: adminer:4.8.1
+    restart: always
+    ports:
+      - 6080:8080
+
+  db:
+    image: mariadb:10.10.2
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345
+
+Esc - выход из реж вставки в режим консоли
+:wq - сохранить и выйти (ещё shift+z+z)
+
+
+Запустим
+root@usrv:~# docker-compose up
+
+_____________________________________________________________________________________________________________________________________________________
+
+Creating network "root_default" with the default driver
+Pulling adminer (adminer:4.8.1)...
+4.8.1: Pulling from library/adminer
+73226dab8db5: Pull complete
+ed94e1c95a57: Pull complete
+884bce373183: Pull complete
+9a4cd7b75371: Pull complete
+574dfab7cda2: Pull complete
+798a45c9628c: Pull complete
+c82cd9b427d9: Pull complete
+Digest: sha256:34d37131366c5aa84e1693dbed48593ed6f95fb450b576c1a7a59d3a9c9e8802
+Status: Downloaded newer image for adminer:4.8.1
+Pulling db (mariadb:10.10.2)...
+10.10.2: Pulling from library/mariadb
+10ac4908093d: Pull complete
+44779101e748: Pull complete
+a721db3e3f3d: Pull complete
+1850a929b84a: Pull complete
+397a918c7da3: Pull complete
+806be17e856d: Pull complete
+634de6c90876: Pull complete
+cd00854cfb1a: Pull complete
+Digest: sha256:bfc25a68e113de43d0d112f5a7126df8e278579c3224e3923359e1c1d8d5ce6e
+Status: Downloaded newer image for mariadb:10.10.2
+Creating root_adminer_1 ... done
+Creating root_db_1      ... done
+Attaching to root_db_1, root_adminer_1
+db_1       | 2025-01-07 12:56:18+00:00 [Note] [Entrypoint]: Entrypoint script for MariaDB Server 1:10.10.2+maria~ubu2204 started.
+adminer_1  | [Tue Jan  7 12:56:18 2025] PHP 7.4.33 Development Server (http://[::]:8080) started
+db_1       | 2025-01-07 12:56:18+00:00 [Note] [Entrypoint]: Switching to dedicated user 'mysql'
+db_1       | 2025-01-07 12:56:19+00:00 [Note] [Entrypoint]: Entrypoint script for MariaDB Server 1:10.10.2+maria~ubu2204 started.
+db_1       | 2025-01-07 12:56:21+00:00 [Note] [Entrypoint]: Initializing database files
+db_1       | 2025-01-07 12:56:21 0 [Warning] mariadbd: io_uring_queue_init() failed with errno 1
+db_1       | 2025-01-07 12:56:21 0 [Warning] InnoDB: liburing disabled: falling back to innodb_use_native_aio=OFF
+db_1       |
+db_1       |
+db_1       | PLEASE REMEMBER TO SET A PASSWORD FOR THE MariaDB root USER !
+db_1       | To do so, start the server, then issue the following command:
+db_1       |
+db_1       | '/usr/bin/mysql_secure_installation'
+db_1       |
+db_1       | which will also give you the option of removing the test
+db_1       | databases and anonymous user created by default.  This is
+db_1       | strongly recommended for production servers.
+db_1       |
+db_1       | See the MariaDB Knowledgebase at https://mariadb.com/kb
+db_1       |
+db_1       | Please report any problems at https://mariadb.org/jira
+db_1       |
+db_1       | The latest information about MariaDB is available at https://mariadb.org/.
+db_1       |
+db_1       | Consider joining MariaDB's strong and vibrant community:
+db_1       | https://mariadb.org/get-involved/
+db_1       |
+db_1       | 2025-01-07 12:56:36+00:00 [Note] [Entrypoint]: Database files initialized
+db_1       | 2025-01-07 12:56:37+00:00 [Note] [Entrypoint]: Starting temporary server
+db_1       | 2025-01-07 12:56:37+00:00 [Note] [Entrypoint]: Waiting for server startup
+db_1       | 2025-01-07 12:56:37 0 [Note] mariadbd (server 10.10.2-MariaDB-1:10.10.2+maria~ubu2204) starting as process 90 ...
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: Compressed tables use zlib 1.2.11
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: Number of transaction pools: 1
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+db_1       | 2025-01-07 12:56:37 0 [Note] mariadbd: O_TMPFILE is not supported on /tmp (disabling future attempts)
+db_1       | 2025-01-07 12:56:37 0 [Warning] mariadbd: io_uring_queue_init() failed with errno 1
+db_1       | 2025-01-07 12:56:37 0 [Warning] InnoDB: liburing disabled: falling back to innodb_use_native_aio=OFF
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: Initializing buffer pool, total size = 128.000MiB, chunk size = 2.000MiB
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: Completed initialization of buffer pool
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: 128 rollback segments are active.
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+db_1       | 2025-01-07 12:56:37 0 [Note] InnoDB: log sequence number 46456; transaction id 14
+db_1       | 2025-01-07 12:56:37 0 [Note] Plugin 'FEEDBACK' is disabled.
+db_1       | 2025-01-07 12:56:37 0 [Warning] 'user' entry 'root@167655b3bf11' ignored in --skip-name-resolve mode.
+db_1       | 2025-01-07 12:56:37 0 [Warning] 'proxies_priv' entry '@% root@167655b3bf11' ignored in --skip-name-resolve mode.
+db_1       | 2025-01-07 12:56:37 0 [Note] mariadbd: ready for connections.
+db_1       | Version: '10.10.2-MariaDB-1:10.10.2+maria~ubu2204'  socket: '/run/mysqld/mysqld.sock'  port: 0  mariadb.org binary distribution
+db_1       | 2025-01-07 12:56:38+00:00 [Note] [Entrypoint]: Temporary server started.
+db_1       | 2025-01-07 12:56:58+00:00 [Note] [Entrypoint]: Securing system users (equivalent to running mysql_secure_installation)
+db_1       |
+db_1       | 2025-01-07 12:56:59+00:00 [Note] [Entrypoint]: Stopping temporary server
+db_1       | 2025-01-07 12:56:59 0 [Note] mariadbd (initiated by: unknown): Normal shutdown
+db_1       | 2025-01-07 12:56:59 0 [Note] InnoDB: FTS optimize thread exiting.
+db_1       | 2025-01-07 12:56:59 0 [Note] InnoDB: Starting shutdown...
+db_1       | 2025-01-07 12:56:59 0 [Note] InnoDB: Dumping buffer pool(s) to /var/lib/mysql/ib_buffer_pool
+db_1       | 2025-01-07 12:56:59 0 [Note] InnoDB: Buffer pool(s) dump completed at 250107 12:56:59
+db_1       | 2025-01-07 12:56:59 0 [Note] InnoDB: Removed temporary tablespace data file: "./ibtmp1"
+db_1       | 2025-01-07 12:56:59 0 [Note] InnoDB: Shutdown completed; log sequence number 46456; transaction id 15
+db_1       | 2025-01-07 12:56:59 0 [Note] mariadbd: Shutdown complete
+db_1       |
+db_1       | 2025-01-07 12:56:59+00:00 [Note] [Entrypoint]: Temporary server stopped
+db_1       |
+db_1       | 2025-01-07 12:56:59+00:00 [Note] [Entrypoint]: MariaDB init process done. Ready for start up.
+db_1       |
+db_1       | 2025-01-07 12:57:00 0 [Note] mariadbd (server 10.10.2-MariaDB-1:10.10.2+maria~ubu2204) starting as process 1 ...
+db_1       | 2025-01-07 12:57:00 0 [Note] InnoDB: Compressed tables use zlib 1.2.11
+db_1       | 2025-01-07 12:57:00 0 [Note] InnoDB: Number of transaction pools: 1
+db_1       | 2025-01-07 12:57:00 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+db_1       | 2025-01-07 12:57:00 0 [Note] mariadbd: O_TMPFILE is not supported on /tmp (disabling future attempts)
+db_1       | 2025-01-07 12:57:00 0 [Warning] mariadbd: io_uring_queue_init() failed with errno 1
+db_1       | 2025-01-07 12:57:00 0 [Warning] InnoDB: liburing disabled: falling back to innodb_use_native_aio=OFF
+db_1       | 2025-01-07 12:57:00 0 [Note] InnoDB: Initializing buffer pool, total size = 128.000MiB, chunk size = 2.000MiB
+db_1       | 2025-01-07 12:57:00 0 [Note] InnoDB: Completed initialization of buffer pool
+db_1       | 2025-01-07 12:57:00 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+db_1       | 2025-01-07 12:57:01 0 [Note] InnoDB: 128 rollback segments are active.
+db_1       | 2025-01-07 12:57:01 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+db_1       | 2025-01-07 12:57:01 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+db_1       | 2025-01-07 12:57:01 0 [Note] InnoDB: log sequence number 46456; transaction id 14
+db_1       | 2025-01-07 12:57:01 0 [Note] Plugin 'FEEDBACK' is disabled.
+db_1       | 2025-01-07 12:57:01 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+db_1       | 2025-01-07 12:57:01 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+db_1       | 2025-01-07 12:57:01 0 [Note] Server socket created on IP: '0.0.0.0'.
+db_1       | 2025-01-07 12:57:01 0 [Note] Server socket created on IP: '::'.
+db_1       | 2025-01-07 12:57:01 0 [Note] InnoDB: Buffer pool(s) load completed at 250107 12:57:01
+db_1       | 2025-01-07 12:57:01 0 [Note] mariadbd: ready for connections.
+db_1       | Version: '10.10.2-MariaDB-1:10.10.2+maria~ubu2204'  socket: '/run/mysqld/mysqld.sock'  port: 3306  mariadb.org binary distribution
+^CGracefully stopping... (press Ctrl+C again to force)
+Stopping root_adminer_1 ... done
+Stopping root_db_1      ... done
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE             COMMAND                  CREATED         STATUS                      PORTS     NAMES
+913c19cad020   adminer:4.8.1     "entrypoint.sh php -…"   3 minutes ago   Exited (0) 20 seconds ago             root_adminer_1
+167655b3bf11   mariadb:10.10.2   "docker-entrypoint.s…"   3 minutes ago   Exited (0) 19 seconds ago             root_db_1
+root@usrv:~#
+_____________________________________________________________________________________________________________________________________________________
+
+Готово!
+
+Удалим всё
+docker-compose down
+
+Запустим снова с директивой -d
+docker-compose up -d
+Creating network "root_default" with the default driver
+Creating root_adminer_1 ... done
+Creating root_db_1      ... done
+root@usrv:~#
+
+Проверим контейнеры
+root@usrv:~# docker container inspect root_adminer_1
+
+________________________________________________________________________ 
+"Networks": {
+                "root_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "a95f33744897",
+                        "adminer"
+                    ],
+                    "MacAddress": "02:42:ac:12:00:02",
+                    "DriverOpts": null,
+                    "NetworkID": "1693832ca155f2b617bdb05b7f428d3ff8f857aa2e33de1305599c6eff13ac3d",
+                    "EndpointID": "05750f7e8e81a462af0c6332956a86a7fd6c748efea1411be162a9431b254f15",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.2",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "root_adminer_1",
+                        "a95f33744897",
+                        "adminer"
+                    ]
+                }
+            }
+
+ "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "38993c5d5bd0e8e752980254a122fb41e0ecba589b7eab5113e28ce22d8c5fcd",
+            "SandboxKey": "/var/run/docker/netns/38993c5d5bd0",
+            "Ports": {
+                "8080/tcp": [
+                    {
+                        "HostIp": "0.0.0.0",
+                        "HostPort": "6080"
+                    },
+                    {
+                        "HostIp": "::",
+                        "HostPort": "6080"
+                    }
+                ]
+            },
+
+_____________________________________________________________________
+
+выводится ip адрес, порты которые были открыты и прочая информация
+
+
+
+
+root@usrv:~# docker container inspect root_db_1
+_____________________________________________________________________
+        "NetworkSettings": {
+            "Bridge": "",
+            "SandboxID": "e20a253f07e20f18cd88954a55c099fc5cb2b8e1a633553e9568f438a306637e",
+            "SandboxKey": "/var/run/docker/netns/e20a253f07e2",
+            "Ports": {
+                "3306/tcp": null
+            },
+
+	"Networks": {
+                "root_default": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": [
+                        "db",
+                        "48a55e0413e6"
+                    ],
+                    "MacAddress": "02:42:ac:12:00:03",
+                    "DriverOpts": null,
+                    "NetworkID": "1693832ca155f2b617bdb05b7f428d3ff8f857aa2e33de1305599c6eff13ac3d",
+                    "EndpointID": "a26e0a80ba3231d3f1671fecd02df4ca5b8a0a6a70c50c671a2b8fa2a4518b76",
+                    "Gateway": "172.18.0.1",
+                    "IPAddress": "172.18.0.3",
+                    "IPPrefixLen": 16,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": [
+                        "root_db_1",
+                        "db",
+                        "48a55e0413e6"
+                    ]
+                }
+            }
+
+_____________________________________________________________________
+В общем вся сетевая информация контейнера и многое другое
+
+
+
+
+Удаляем
+docker-compose down
+_____________________________________________________________________
+root@usrv:~# docker-compose down
+Stopping root_db_1      ... done #останов
+Stopping root_adminer_1 ... done
+Removing root_db_1      ... done #удаление
+Removing root_adminer_1 ... done
+Removing network root_default    #удаление сети
+root@usrv:~#
+_____________________________________________________________________
+
+
+Список команд:
+
+_____________________________________________________________________
+docker-compose build - если в yml файле будет вместо image build, то 
+произойдет сборка образа 
+
+root@usrv:~# cat docker-compose.yml
+
+version: '3.9'
+
+services:
+
+  adminer:
+    image: adminer:4.8.1
+    restart: always
+    ports:
+      - 6080:8080
+
+  db:
+    image: mariadb:10.10.2
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345
+
+
+root@usrv:~#
+_____________________________________________________________________
+docker-compose up -d   --- позволяет запустить наш проект
+
+root@usrv:~# docker-compose up -d
+Creating network "root_default" with the default driver
+Creating root_adminer_1 ... done
+Creating root_db_1      ... done
+root@usrv:~#
+
+_____________________________________________________________________
+ 
+docker-compose stop   --- просто останавливает наш проект
+
+root@usrv:~# docker-compose stop
+Stopping root_adminer_1 ... done
+Stopping root_db_1      ... done
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE             COMMAND                  CREATED         STATUS                            PORTS     NAMES
+f9f9ea24ce05   adminer:4.8.1     "entrypoint.sh php -…"   2 minutes ago   Exited (0) About a minute ago               root_adminer_1
+ea0e8066ec46   mariadb:10.10.2   "docker-entrypoint.s…"   2 minutes ago   Exited (137) About a minute ago             root_db_1
+root@usrv:~#
+
+контейнеры остаются
+_____________________________________________________________________
+
+docker-compose start   --- запускает остановленный проект
+
+root@usrv:~# docker-compose start
+Starting adminer ... done
+Starting db      ... done
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE             COMMAND                  CREATED         STATUS          PORTS                                         NAMES
+f9f9ea24ce05   adminer:4.8.1     "entrypoint.sh php -…"   4 minutes ago   Up 18 seconds   0.0.0.0:6080->8080/tcp, [::]:6080->8080/tcp   root_adminer_1
+ea0e8066ec46   mariadb:10.10.2   "docker-entrypoint.s…"   4 minutes ago   Up 19 seconds   3306/tcp                                      root_db_1
+root@usrv:~#
+ ____________________________________________________________________
+
+docker-compose down   ---останавливает и удаляет наш проект  
+
+
+root@usrv:~# docker-compose down
+Stopping root_adminer_1 ... done
+Stopping root_db_1      ... done
+Removing root_adminer_1 ... done
+Removing root_db_1      ... done
+Removing network root_default
+root@usrv:~# docker ps -a
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+root@usrv:~#
+
+root@usrv:~#
+_____________________________________________________________________
+
+docker-compose logs db   ---посмотреть логи, напр нашей базы данных (db - здесь имя сервиса - см файл docker-compose.yml)
+
+
+root@usrv:~# docker-compose logs db
+Attaching to root_db_1
+db_1       | 2025-01-07 13:39:44+00:00 [Note] [Entrypoint]: Entrypoint script for MariaDB Server 1:10.10.2+maria~ubu2204 started.
+db_1       | 2025-01-07 13:39:46+00:00 [Note] [Entrypoint]: Switching to dedicated user 'mysql'
+db_1       | 2025-01-07 13:39:46+00:00 [Note] [Entrypoint]: Entrypoint script for MariaDB Server 1:10.10.2+maria~ubu2204 started.
+db_1       | 2025-01-07 13:39:47+00:00 [Note] [Entrypoint]: Initializing database files
+db_1       | 2025-01-07 13:39:49 0 [Warning] mariadbd: io_uring_queue_init() failed with errno 1
+db_1       | 2025-01-07 13:39:49 0 [Warning] InnoDB: liburing disabled: falling back to innodb_use_native_aio=OFF
+db_1       |
+db_1       |
+db_1       | PLEASE REMEMBER TO SET A PASSWORD FOR THE MariaDB root USER !
+db_1       | To do so, start the server, then issue the following command:
+db_1       |
+db_1       | '/usr/bin/mysql_secure_installation'
+db_1       |
+db_1       | which will also give you the option of removing the test
+db_1       | databases and anonymous user created by default.  This is
+db_1       | strongly recommended for production servers.
+db_1       |
+db_1       | See the MariaDB Knowledgebase at https://mariadb.com/kb
+db_1       |
+db_1       | Please report any problems at https://mariadb.org/jira
+db_1       |
+db_1       | The latest information about MariaDB is available at https://mariadb.org/.
+db_1       |
+db_1       | Consider joining MariaDB's strong and vibrant community:
+db_1       | https://mariadb.org/get-involved/
+db_1       |
+db_1       | 2025-01-07 13:40:12+00:00 [Note] [Entrypoint]: Database files initialized
+db_1       | 2025-01-07 13:40:12+00:00 [Note] [Entrypoint]: Starting temporary server
+db_1       | 2025-01-07 13:40:12+00:00 [Note] [Entrypoint]: Waiting for server startup
+db_1       | 2025-01-07 13:40:12 0 [Note] mariadbd (server 10.10.2-MariaDB-1:10.10.2+maria~ubu2204) starting as process 92 ...
+db_1       | 2025-01-07 13:40:12 0 [Note] InnoDB: Compressed tables use zlib 1.2.11
+db_1       | 2025-01-07 13:40:12 0 [Note] InnoDB: Number of transaction pools: 1
+db_1       | 2025-01-07 13:40:12 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+db_1       | 2025-01-07 13:40:12 0 [Note] mariadbd: O_TMPFILE is not supported on /tmp (disabling future attempts)
+db_1       | 2025-01-07 13:40:12 0 [Warning] mariadbd: io_uring_queue_init() failed with errno 1
+db_1       | 2025-01-07 13:40:12 0 [Warning] InnoDB: liburing disabled: falling back to innodb_use_native_aio=OFF
+db_1       | 2025-01-07 13:40:12 0 [Note] InnoDB: Initializing buffer pool, total size = 128.000MiB, chunk size = 2.000MiB
+db_1       | 2025-01-07 13:40:12 0 [Note] InnoDB: Completed initialization of buffer pool
+db_1       | 2025-01-07 13:40:13 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+db_1       | 2025-01-07 13:40:13 0 [Note] InnoDB: 128 rollback segments are active.
+db_1       | 2025-01-07 13:40:13 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+db_1       | 2025-01-07 13:40:13 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+db_1       | 2025-01-07 13:40:13 0 [Note] InnoDB: log sequence number 46456; transaction id 14
+db_1       | 2025-01-07 13:40:13 0 [Note] Plugin 'FEEDBACK' is disabled.
+db_1       | 2025-01-07 13:40:13 0 [Warning] 'user' entry 'root@d9084d59b031' ignored in --skip-name-resolve mode.
+db_1       | 2025-01-07 13:40:13 0 [Warning] 'proxies_priv' entry '@% root@d9084d59b031' ignored in --skip-name-resolve mode.
+db_1       | 2025-01-07 13:40:13 0 [Note] mariadbd: ready for connections.
+db_1       | Version: '10.10.2-MariaDB-1:10.10.2+maria~ubu2204'  socket: '/run/mysqld/mysqld.sock'  port: 0  mariadb.org binary distribution
+db_1       | 2025-01-07 13:40:13+00:00 [Note] [Entrypoint]: Temporary server started.
+root@usrv:~#
+
+root@usrv:~# docker-compose logs adminer
+Attaching to root_adminer_1
+adminer_1  | [Tue Jan  7 13:39:45 2025] PHP 7.4.33 Development Server (http://[::]:8080) started
+_____________________________________________________________________
+
+docker compose ps   ---посмотреть все доступные контейнеры
+
+root@usrv:~# docker-compose ps
+     Name                   Command               State                    Ports
+--------------------------------------------------------------------------------------------------
+root_adminer_1   entrypoint.sh php -S [::]: ...   Up      0.0.0.0:6080->8080/tcp,:::6080->8080/tcp
+root_db_1        docker-entrypoint.sh mariadbd    Up      3306/tcp
+root@usrv:~#
+_____________________________________________________________________
+
+ocker compose images   ---посмотреть доступные образы
+
+root@usrv:~# docker compose images
+WARN[0000] /root/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
+CONTAINER           REPOSITORY          TAG                 IMAGE ID            SIZE
+root_adminer_1      adminer             4.8.1               2f7580903a1d        250MB
+root_db_1           mariadb             10.10.2             039bd724508b        410MB
+root@usrv:~#
+_____________________________________________________________________
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
