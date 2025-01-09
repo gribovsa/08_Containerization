@@ -1,0 +1,145 @@
+
+Вывести список сетей
+
+нода usrv
+root@usvr:~# docker network ls
+NETWORK ID     NAME              DRIVER    SCOPE
+c71d18e5dfe9   bridge            bridge    local
+6c6170ac624f   docker_gwbridge   bridge    local
+9c61bd23fdfc   host              host      local
+21wpw7rq8k5n   ingress           overlay   swarm
+756e5ed75e41   none              null      local
+root@usvr:~#
+
+нода uwork1
+root@uwork1:~# docker network ls
+NETWORK ID     NAME              DRIVER    SCOPE
+da2548b8626f   bridge            bridge    local
+91343d8cd0ab   docker_gwbridge   bridge    local
+9c61bd23fdfc   host              host      local
+21wpw7rq8k5n   ingress           overlay   swarm
+756e5ed75e41   none              null      local
+root@uwork1:~#
+
+нода uwork2
+root@uwork2:~# docker network ls
+NETWORK ID     NAME              DRIVER    SCOPE
+3fdcdd86334c   bridge            bridge    local
+f6c62e80d4cb   docker_gwbridge   bridge    local
+9c61bd23fdfc   host              host      local
+21wpw7rq8k5n   ingress           overlay   swarm
+756e5ed75e41   none              null      local
+root@uwork2:~#
+
+Сеть одинаковая на всех нодах: 21wpw7rq8k5n   ingress           overlay   swarm
+
+
+Задача:
+Создать overlay сеть (--subnet 4.5.6.0/24) имя (test-network) и подключить к ней контейнеры (--attachable)
+
+root@usvr:~# docker network create --driver overlay --subnet 4.5.6.0/24 test-network --attachable
+audv3bs0tlort92bmxxcexau1
+root@usvr:~#
+
+Проверим
+root@usvr:~# docker network ls
+NETWORK ID     NAME              DRIVER    SCOPE
+c71d18e5dfe9   bridge            bridge    local
+6c6170ac624f   docker_gwbridge   bridge    local
+9c61bd23fdfc   host              host      local
+21wpw7rq8k5n   ingress           overlay   swarm
+756e5ed75e41   none              null      local
+audv3bs0tlor   test-network      overlay   swarm
+root@usvr:~#
+
+
+Запустим контейнеры на созданной сети.
+
+
+Нода usrv
+
+Режим: d демон
+Образ: busybox
+Имя: con-1
+Ip: 4.5.6.7
+sleep 3600
+
+docker run -d --ip 4.5.6.7 --net test-network --name con-1 busybox sleep 3600
+---------------------------------------------------------------------------------
+Unable to find image 'busybox:latest' locally
+latest: Pulling from library/busybox
+9c0abc9c5bd3: Pull complete
+Digest: sha256:2919d0172f7524b2d8df9e50066a682669e6d170ac0f6a49676d54358fe970b5
+Status: Downloaded newer image for busybox:latest
+b876c260a99c4f59f3b967d784ed540b06940ca4bce88c3fc859ec3f8133a245
+root@usvr:~#
+root@usvr:~# docker ps -a
+CONTAINER ID   IMAGE         COMMAND        CREATED          STATUS                   PORTS     NAMES
+f0400cc823e4   busybox       "sleep 3600"   16 seconds ago   Up 14 seconds                      con-1
+8e835afed111   hello-world   "/hello"       9 hours ago      Exited (0) 9 hours ago             elated_neumann
+root@usvr:~#
+---------------------------------------------------------------------------------
+
+Проверим, что на других нодах появилась сеть 
+audv3bs0tlor   test-network      overlay   swarm
+
+Если на других нодах сеть не появляется, то на ноде usrv сделали
+docker node promote uwork1
+docker node promote uwork2
+
+
+
+Нода uwork1
+
+docker run -d --ip 4.5.6.8 --net test-network --name con-2 busybox sleep 3600
+
+Зайдём в него
+docker exec -it con-2 sh
+
+Пропингуем контейер на соседней ноде usrv
+
+root@uwork1:~# docker exec -it con-2 sh
+/ # ping 4.5.6.7
+PING 4.5.6.7 (4.5.6.7): 56 data bytes
+64 bytes from 4.5.6.7: seq=0 ttl=64 time=0.035 ms
+64 bytes from 4.5.6.7: seq=1 ttl=64 time=0.074 ms
+64 bytes from 4.5.6.7: seq=2 ttl=64 time=0.083 ms
+пинг есть!
+
+/ # ping 4.5.6.8
+PING 4.5.6.8 (4.5.6.8): 56 data bytes
+64 bytes from 4.5.6.8: seq=0 ttl=64 time=0.035 ms
+64 bytes from 4.5.6.8: seq=1 ttl=64 time=0.074 ms
+64 bytes from 4.5.6.8: seq=2 ttl=64 time=0.083 ms
+64 bytes from 4.5.6.8: seq=3 ttl=64 time=0.043 ms
+64 bytes from 4.5.6.8: seq=4 ttl=64 time=0.124 ms
+64 bytes from 4.5.6.8: seq=5 ttl=64 time=0.045 ms
+пинг самого себя есть!
+
+
+Нода usrv
+
+Зайдём в него
+docker exec -it con-1 sh
+/ # ping 4.5.6.8
+PING 4.5.6.8 (4.5.6.8): 56 data bytes
+64 bytes from 4.5.6.8: seq=0 ttl=64 time=0.035 ms
+64 bytes from 4.5.6.8: seq=1 ttl=64 time=0.074 ms
+64 bytes from 4.5.6.8: seq=2 ttl=64 time=0.083 ms
+пинг контейнера на uwork1 есть!
+
+
+Нода usrv
+
+удалим нашу сеть
+docker network rm test-network
+
+
+
+
+
+
+
+
+
+

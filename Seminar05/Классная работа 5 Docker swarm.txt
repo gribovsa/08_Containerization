@@ -79,16 +79,120 @@ Nginx на Alpine
 
 На ноде usrv1 (она у нас манагер)
 
+РАБОЧИЙ РЕЖИМ
+
 docker service create --name test1 --replicas 3 nginx:alpine
 имя --name test1
-количество --replicas 3
+указываем количество --replicas 3
 
 ---------------------------------------------------------------------
+root@usvr:~# docker service create --name test1 --replicas 3 nginx:alpine
+lx4r0l23sgr5jtd30k0qvifcw
+overall progress: 3 out of 3 tasks
+1/3: running   [==================================================>]
+2/3: running   [==================================================>]
+3/3: running   [==================================================>]
+verify: Service lx4r0l23sgr5jtd30k0qvifcw converged
+
+root@usvr:~#
+---------------------------------------------------------------------
+
+docker service ps test1 - посмотреть информацию о сервисах запущенных на нодах
+-----------------------------------------------------------------------------------------------------------------------------------
+root@usvr:~# docker service ps test1
+ID             NAME      IMAGE          NODE      DESIRED STATE   CURRENT STATE            ERROR     PORTS
+qufxvigvpqwb   test1.1   nginx:alpine   uwork1    Running         Running 53 seconds ago
+kx3ywb7cf0u0   test1.2   nginx:alpine   uwork2    Running         Running 53 seconds ago
+1mu5vb4d4wz1   test1.3   nginx:alpine   usvr      Running         Running 53 seconds ago
+root@usvr:~#
+-----------------------------------------------------------------------------------------------------------------------------------
+docker service rm test1 - удалить сервис
 
 
 
+ГЛОБАЛЬНЫЙ РЕЖИМ
+
+На ноде usrv1 (она у нас манагер)
+
+docker service create --mode=global --name test1 nginx:alpine
+
+--mode=global  --- опция указывает, на то что сервис nginx:alpine с именем test1 будет запущен на всех нодах (не уточняя их количество)
+будет запущено такое количество реплик сервиса nginx:alpine сколько у нас нод 
+
+---------------------------------------------------------------------
+root@usvr:~# docker service create --mode=global --name test1 nginx:alpine
+vvr3wtxmsnqmgezg18ht1pg92
+overall progress: 3 out of 3 tasks
+s34721f482ig: running   [==================================================>]
+5rlct3lv8ldd: running   [==================================================>]
+kflyo1yqguhc: running   [==================================================>]
+verify: Service vvr3wtxmsnqmgezg18ht1pg92 converged
+---------------------------------------------------------------------
+
+docker service ps test1 - посмотреть информацию о сервисах запущенных на нодах
+-------------------------------------------------------------------------------
+root@usvr:~# docker service ps test1
+ID             NAME                              IMAGE          NODE      DESIRED STATE   CURRENT STATE            ERROR     PORTS
+nf7fz2eq3q9m   test1.5rlct3lv8lddfrsypm4kn2vsm   nginx:alpine   uwork2    Running         Running 12 seconds ago
+xjowbmrrq6ke   test1.kflyo1yqguhcd8u4ff9odfdcg   nginx:alpine   uwork1    Running         Running 12 seconds ago
+8d1xmhejvlfj   test1.s34721f482igs8t2m2ff7fp6f   nginx:alpine   usvr      Running         Running 12 seconds ago
+root@usvr:~#
+-------------------------------------------------------------------------------
 
 
+Удаление..
+
+на каждой worker нодах
+docker swarm leave
+Если затем зайти на manager ноду и выполнить docker node ls, вы заметите, что статус у нее поменялся c Ready на Down (это может занять некоторое время). 
+Swarm больше не будет использовать данную ноду для размещения контейнеров, и вы можете спокойно заняться техническими работами, не боясь нанести вред работающим контейнерам. 
+
+Для того чтобы окончательно удалить ноду, надо выполнить (на manager node):
+docker node rm Хостнайм
+
+
+Задача 3.
+Команда docker service scale test1=1
+Команда scale позволяет масштабировать одну или несколько реплик сервисов больше или меньше до желаемого количества реплик. Эта команда не может быть применена к сервисам, которые работают в ГЛОБАЛЬНОМ РЕЖИМЕ.
+------------------------------------------------------------------------------
+overall progress: 1 out of 1 tasks
+1/1: running   [==================================================>]
+verify: Service test1 converged
+root@usvr:~# docker service ps test1
+ID             NAME      IMAGE          NODE      DESIRED STATE   CURRENT STATE            ERROR     PORTS
+qufxvigvpqwb   test1.1   nginx:alpine   uwork1    Running         Running 32 minutes ago
+root@usvr:~#
+
+------------------------------------------------------------------------------
+До 3 реплик обратно docker service scale test1=3 
+root@usvr:~# docker service scale test1=3
+test1 scaled to 3
+overall progress: 3 out of 3 tasks
+1/3: running   [==================================================>]
+2/3: running   [==================================================>]
+3/3: running   [==================================================>]
+verify: Service test1 converged
+root@usvr:~#
+-------------------------------------------------------------------------------------------------------------
+Количество реплик превышает количество нод, у нас появились дубли, это может быть чревато последствиями
+root@usvr:~# docker service scale test1=5
+test1 scaled to 5
+overall progress: 5 out of 5 tasks
+1/5: running   [==================================================>]
+2/5: running   [==================================================>]
+3/5: running   [==================================================>]
+4/5: running   [==================================================>]
+5/5: running   [==================================================>]
+verify: Service test1 converged
+root@usvr:~# docker service ps test1
+ID             NAME      IMAGE          NODE      DESIRED STATE   CURRENT STATE            ERROR     PORTS
+qufxvigvpqwb   test1.1   nginx:alpine   uwork1    Running         Running 34 minutes ago
+atk0x8dil1di   test1.2   nginx:alpine   usvr      Running         Running 2 minutes ago
+2bkq4fov0ujx   test1.3   nginx:alpine   uwork2    Running         Running 2 minutes ago
+t6nmjd5drdd1   test1.4   nginx:alpine   uwork1    Running         Running 13 seconds ago
+ihq57s0f7yaj   test1.5   nginx:alpine   usvr      Running         Running 13 seconds ago
+root@usvr:~#
+-------------------------------------------------------------------------------------------------------------
 
 
 
